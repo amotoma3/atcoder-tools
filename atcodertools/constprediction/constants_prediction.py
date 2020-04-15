@@ -25,7 +25,7 @@ def is_japanese(ch):
     return False
 
 def escape(content: str) -> str:
-    return content.strip().replace('\r\n', '').replace('\\leq','<=').replace('\\le','<').replace('\\times','x').replace('\\eq','=').replace('\\neq','!=')
+    return content.strip().replace('\r\n', '').replace('\\leq','<=').replace('\\le','<').replace('\\times','×').replace('\\eq','=').replace('\\neq','!=').replace('\\geq','>=').replace('\\ge','>')
 
 class YesNoPredictionFailedError(Exception):
     pass
