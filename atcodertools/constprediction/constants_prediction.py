@@ -1,5 +1,5 @@
 import re
-from typing import Tuple, Optional
+from typing import List, Tuple, Optional
 
 from bs4 import BeautifulSoup
 
@@ -8,6 +8,24 @@ from atcodertools.common.judgetype import ErrorType, NormalJudge, DecimalJudge, 
 from atcodertools.common.logging import logger
 from atcodertools.constprediction.models.problem_constant_set import ProblemConstantSet
 
+import unicodedata
+
+def remove_non_jp_characters(content):
+    return "".join([x for x in content if is_japanese(x)])
+
+def is_japanese(ch):
+    # Thank you!
+    # http://minus9d.hatenablog.com/entry/2015/07/16/231608
+    try:
+        name = unicodedata.name(ch)
+        if "CJK UNIFIED" in name or "HIRAGANA" in name or "KATAKANA" in name:
+            return True
+    except ValueError:
+        pass
+    return False
+
+def escape(content: str) -> str:
+    return content.strip().replace('\r\n', '').replace('\\leq','<=').replace('\\le','<').replace('\\times','x').replace('\\eq','=').replace('\\neq','!=')
 
 class YesNoPredictionFailedError(Exception):
     pass
@@ -174,6 +192,41 @@ def predict_judge_method(html: str) -> Judge:
 
     return NormalJudge()
 
+def extract_output_texts(html: str) -> List[str]:
+    output_texts = []
+    soup = BeautifulSoup(html, "html.parser")
+    for tag in soup.select('section'):
+        h3tag = tag.find('h3')
+        if h3tag is None:
+            continue
+        # Some problems have strange characters in h3 tags which should be
+        # removed
+        section_title = remove_non_jp_characters(tag.find('h3').get_text())
+
+        if section_title.startswith("出力例"):
+            pass
+        elif section_title.startswith("出力"):
+            for p_tag in tag.select('p'):
+                output_texts.append(escape(p_tag.get_text()))
+    
+    return output_texts
+
+def extract_constraint_texts(html: str) -> List[str]:
+    constraint_texts = []
+    soup = BeautifulSoup(html, "html.parser")
+    for tag in soup.select('section'):
+        h3tag = tag.find('h3')
+        if h3tag is None:
+            continue
+        # Some problems have strange characters in h3 tags which should be
+        # removed
+        section_title = remove_non_jp_characters(tag.find('h3').get_text())
+
+        if section_title.startswith("制約"):
+            for li_tag in tag.select('li'):
+                constraint_texts.append(escape(li_tag.get_text()))
+    
+    return constraint_texts
 
 def predict_constants(html: str) -> ProblemConstantSet:
     try:
@@ -195,4 +248,7 @@ def predict_constants(html: str) -> ProblemConstantSet:
                        "two or more candidates {} are detected as decimal values".format(e.cands))
         judge = NormalJudge()
 
-    return ProblemConstantSet(mod=mod, yes_str=yes_str, no_str=no_str, judge_method=judge)
+    output_texts = extract_output_texts(html)
+    constraint_texts = extract_constraint_texts(html)
+
+    return ProblemConstantSet(mod=mod, yes_str=yes_str, no_str=no_str, judge_method=judge, output_texts=output_texts, constraint_texts=constraint_texts)
