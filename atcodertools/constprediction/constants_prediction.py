@@ -19,6 +19,10 @@ class MultipleModCandidatesError(Exception):
         self.cands = cands
 
 
+class NoDecimalCandidatesError(Exception):
+    pass
+
+
 class MultipleDecimalCandidatesError(Exception):
 
     def __init__(self, cands):
@@ -39,8 +43,10 @@ DECIMAL_STRATEGY_RE_LIST_KEYWORD = [
     re.compile("(?:絶対|相対)誤差"),
     re.compile("(?:absolute|relative)")
 ]
+
 DECIMAL_STRATEGY_RE_LIST_VAL = [
     re.compile("10\^(-[0-9]+)"),
+    re.compile("1e(-[0-9]+)")
 ]
 
 
@@ -151,8 +157,7 @@ def predict_judge_method(html: str) -> Judge:
                     decimal_val_cands.add(int(t))
 
         if len(decimal_val_cands) == 0:
-            # No error value candidate is found
-            return NormalJudge()
+            raise NoDecimalCandidatesError
 
         if len(decimal_val_cands) == 1:
             if is_absolute and is_relative:
